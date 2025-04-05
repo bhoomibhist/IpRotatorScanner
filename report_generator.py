@@ -1,8 +1,14 @@
-import pandas as pd
 import io
+import csv
 import logging
 from typing import List, Dict
 from datetime import datetime
+
+# Use try/except for pandas import in case it's not available
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 
 logger = logging.getLogger(__name__)
 
