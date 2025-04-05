@@ -1,4 +1,6 @@
 import os
+import io
+import csv
 import logging
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
@@ -525,39 +527,86 @@ def report_detail(report_id):
 @app.route('/export_report/<int:report_id>')
 def export_report(report_id):
     try:
-        # Fetch the report (just the metadata, not the actual URLs)
+        # Fetch the report
         report = Report.query.get_or_404(report_id)
         
-        # Instead of querying the database for URLs (which causes encoding issues),
-        # we'll generate a static report with the statistics only
+        # Create a CSV string buffer
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
         
-        # Create CSV content as a string
-        csv_content = f"""Report: {report.name}
-Generated on: {report.created_at.strftime('%Y-%m-%d %H:%M:%S')}
-Indexed URLs: {report.indexed_urls} / {report.total_urls} ({report.indexed_percentage:.1f}%)
-
-URL,Indexed,Checked At
-
-INDEXED URLS:
-"https://example.com/page1","Yes","{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}"
-"https://example.com/page2","Yes","{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}"
-"https://en.wikipedia.org/wiki/Main_Page","Yes","{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}"
-
-NOT INDEXED URLS:
-"https://example.com/new-page","No","{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}"
-"https://example.com/blog/draft","No","{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}"
-"https://subdomain.example.net/test-page","No","{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}"
-
-NOTE: This is a sample CSV export with example URLs. For the full dataset, please view the results in the web interface.
-"""
+        # Add report header information
+        writer.writerow([f"Report: {report.name}"])
+        writer.writerow([f"Generated on: {report.created_at.strftime('%Y-%m-%d %H:%M:%S')}"])
+        writer.writerow([f"Indexed URLs: {report.indexed_urls} / {report.total_urls} ({report.indexed_percentage:.1f}%)"])
+        writer.writerow([])  # Empty row for spacing
+        
+        # Add CSV headers
+        writer.writerow(["URL", "Indexed", "Checked At"])
+        
+        # To prevent encoding issues, we'll use a different query approach
+        # Fetch and process in small batches
+        
+        # Create the lists for indexed and non-indexed URLs
+        indexed_urls = []
+        not_indexed_urls = []
+        
+        # Process URLs and check results in small batches to avoid memory issues
+        # Get all URLs first
+        try:
+            urls = URL.query.all()
+            
+            for url in urls:
+                try:
+                    # Get the latest check result for this URL
+                    check_result = CheckResult.query.filter_by(url_id=url.id).order_by(CheckResult.checked_at.desc()).first()
+                    
+                    if check_result:
+                        # Basic data for the URL
+                        url_data = [
+                            url.url,
+                            "Yes" if check_result.is_indexed else "No",
+                            check_result.checked_at.strftime('%Y-%m-%d %H:%M:%S')
+                        ]
+                        
+                        # Separate indexed and non-indexed URLs
+                        if check_result.is_indexed:
+                            indexed_urls.append(url_data)
+                        else:
+                            not_indexed_urls.append(url_data)
+                except Exception as inner_e:
+                    # Log and continue if there's an issue with a specific URL
+                    logger.warning(f"Error processing URL ID {url.id}: {str(inner_e)}")
+                    continue
+                    
+        except Exception as e:
+            logger.error(f"Error querying database: {str(e)}")
+            # If we encounter an error, add a message to the CSV
+            writer.writerow(["Error retrieving data from database. Some URLs may be missing."])
+        
+        # Add indexed URLs section if any exist
+        if indexed_urls:
+            writer.writerow([])  # Add spacing
+            writer.writerow(["INDEXED URLS:"])
+            for url_data in indexed_urls:
+                writer.writerow(url_data)
+        
+        # Add non-indexed URLs section if any exist
+        if not_indexed_urls:
+            writer.writerow([])  # Add spacing
+            writer.writerow(["NOT INDEXED URLS:"])
+            for url_data in not_indexed_urls:
+                writer.writerow(url_data)
+                
+        # Get the completed CSV data
+        csv_data = buffer.getvalue()
         
         # Return the CSV data with appropriate headers
-        return csv_content, 200, {
+        return csv_data, 200, {
             'Content-Type': 'text/csv', 
-            'Content-Disposition': f'attachment; filename=report_{report_id}_sample.csv'
+            'Content-Disposition': f'attachment; filename=report_{report_id}.csv'
         }
         
     except Exception as e:
-        logger.error(f"Error creating report sample: {str(e)}")
+        logger.error(f"Error exporting report: {str(e)}")
         flash(f'Error exporting report: {str(e)}', 'danger')
         return redirect(url_for('report_detail', report_id=report_id))
