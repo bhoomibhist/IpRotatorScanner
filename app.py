@@ -38,9 +38,9 @@ from proxy_manager import ProxyManager
 from indexing_checker import IndexingChecker
 from report_generator import ReportGenerator
 
-# Initialize components
-proxy_manager = ProxyManager()
-indexing_checker = IndexingChecker(proxy_manager)
+# Initialize components with demo mode settings
+proxy_manager = ProxyManager(use_direct_connection=True)
+indexing_checker = IndexingChecker(proxy_manager, demo_mode=True)
 report_generator = ReportGenerator()
 
 # Create database tables

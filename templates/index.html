@@ -3,6 +3,14 @@
 {% block content %}
 <div class="row">
     <div class="col-lg-8 mx-auto">
+        <!-- Demo Mode Alert -->
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <strong><i class="fas fa-info-circle"></i> Demo Mode Active:</strong> 
+            This application is running in demo mode and will simulate checking URL indexing status without making actual Google requests.
+            Results are based on heuristic factors that mimic real-world indexing patterns.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        
         <div class="card shadow">
             <div class="card-header bg-primary text-white">
                 <h4 class="mb-0">
@@ -12,15 +20,16 @@
             <div class="card-body">
                 <p class="card-text">
                     Enter URLs to check if they are indexed on Google. Enter one URL per line.
-                    Our system will rotate IP addresses for each request to avoid rate limiting.
+                    In production, our system rotates IP addresses to avoid Google's rate limiting.
                 </p>
                 
                 <form action="{{ url_for('check_urls') }}" method="POST">
                     <div class="mb-3">
                         <label for="urls" class="form-label">URLs to check:</label>
                         <textarea class="form-control" id="urls" name="urls" rows="10" placeholder="https://example.com
-https://another-example.com
-https://third-example.com" required></textarea>
+https://github.com
+https://wikipedia.org
+https://wordpress.com" required></textarea>
                         <small class="form-text text-muted">Enter up to 50 URLs at a time for best performance.</small>
                     </div>
                     

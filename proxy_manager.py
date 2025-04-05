@@ -9,22 +9,28 @@ logger = logging.getLogger(__name__)
 class ProxyManager:
     """
     Manages a list of proxy servers and rotates them for making requests.
+    In demo mode, it will make direct requests without proxies.
     """
     
-    def __init__(self):
+    def __init__(self, use_direct_connection=True):
         self.proxies = []
         self.current_index = 0
         self.last_update = 0
-        # Default free proxies for demo purposes
+        self.use_direct_connection = use_direct_connection
+        
+        # Default free proxies for demo purposes - these are placeholders
         # In production, you'd use a paid proxy service or your own proxy list
         self.default_proxies = [
-            '1.2.3.4:8080',  # These are dummy values and don't work
-            '5.6.7.8:8080',
-            '9.10.11.12:8080'
+            'dummy-proxy-1',  # These are just placeholders
+            'dummy-proxy-2',
+            'dummy-proxy-3'
         ]
         
         # Load proxies on initialization
         self.update_proxies()
+        
+        if self.use_direct_connection:
+            logger.info("Running in direct connection mode (no proxies)")
     
     def update_proxies(self) -> None:
         """
@@ -53,8 +59,12 @@ class ProxyManager:
     
     def get_next_proxy(self) -> Dict[str, str]:
         """
-        Returns the next proxy in the rotation.
+        Returns the next proxy in the rotation, or empty dict for direct connection.
         """
+        if self.use_direct_connection:
+            # In direct connection mode, return empty dict (no proxy)
+            return {}
+            
         if not self.proxies:
             self.update_proxies()
         
@@ -77,8 +87,12 @@ class ProxyManager:
     
     def get_random_proxy(self) -> Dict[str, str]:
         """
-        Returns a random proxy from the list.
+        Returns a random proxy from the list, or empty dict for direct connection.
         """
+        if self.use_direct_connection:
+            # In direct connection mode, return empty dict (no proxy)
+            return {}
+            
         if not self.proxies:
             self.update_proxies()
         
@@ -100,7 +114,7 @@ class ProxyManager:
     def make_request(self, url: str, method: str = 'GET', max_retries: int = 3, 
                      timeout: int = 10, **kwargs) -> Optional[requests.Response]:
         """
-        Makes a request using a rotating proxy.
+        Makes a request using a rotating proxy or direct connection.
         
         Args:
             url: The URL to request
@@ -114,19 +128,22 @@ class ProxyManager:
         """
         retries = 0
         while retries < max_retries:
+            # Get proxy configuration (empty dict for direct connection)
             proxy = self.get_next_proxy()
+            
             try:
                 if method.upper() == 'GET':
+                    # If in direct connection mode, proxies will be empty dict
                     response = requests.get(
                         url, 
-                        proxies=proxy,
+                        proxies=proxy if not self.use_direct_connection else None,
                         timeout=timeout,
                         **kwargs
                     )
                 elif method.upper() == 'POST':
                     response = requests.post(
                         url,
-                        proxies=proxy,
+                        proxies=proxy if not self.use_direct_connection else None,
                         timeout=timeout,
                         **kwargs
                     )
@@ -143,7 +160,7 @@ class ProxyManager:
             
             retries += 1
             # Exponential backoff
-            time.sleep(2 ** retries)
+            time.sleep(1)  # Reduced from 2**retries to be faster
         
         logger.error(f"Failed to make request to {url} after {max_retries} retries")
         return None
