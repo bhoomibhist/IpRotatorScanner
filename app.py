@@ -37,9 +37,13 @@ else:
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
-    "pool_size": 10,
-    "max_overflow": 20,
-    "pool_timeout": 30,
+    "pool_size": 20,
+    "max_overflow": 40,
+    "pool_timeout": 60,
+    "connect_args": {
+        "client_encoding": 'utf8',
+        "options": "-c timezone=utc"
+    }
 }
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -47,9 +51,15 @@ def check_db_connection():
     """Check if database connection is healthy."""
     try:
         db.session.execute(text('SELECT 1'))
+        db.session.commit()
         return True
     except Exception as e:
         logger.error(f"Database connection error: {str(e)}")
+        # Try to safely close any existing sessions
+        try:
+            db.session.rollback()
+        except:
+            pass
         return False
 
 # Add health check endpoint
@@ -553,7 +563,11 @@ def report_detail(report_id):
 
 @app.route('/export_report/<int:report_id>')
 def export_report(report_id):
+    from sqlalchemy import text
     try:
+        # First verify database connection
+        db.session.execute(text('SELECT 1'))
+        db.session.commit()
         # Fetch the report
         report = Report.query.get_or_404(report_id)
         
