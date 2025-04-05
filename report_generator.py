@@ -43,14 +43,28 @@ class ReportGenerator:
         # Generate domain-level statistics
         domains = {}
         for r in results:
-            # Extract domain from URL
-            domain = r['url'].split('//', 1)[-1].split('/', 1)[0]
-            if domain not in domains:
-                domains[domain] = {'total': 0, 'indexed': 0}
-            
-            domains[domain]['total'] += 1
-            if r['is_indexed']:
-                domains[domain]['indexed'] += 1
+            try:
+                # Extract domain from URL safely
+                url = r['url']
+                if '//' in url:
+                    domain = url.split('//', 1)[-1].split('/', 1)[0]
+                else:
+                    # Handle URLs without protocol
+                    domain = url.split('/', 1)[0]
+                
+                # Skip empty domains
+                if not domain:
+                    continue
+                    
+                if domain not in domains:
+                    domains[domain] = {'total': 0, 'indexed': 0}
+                
+                domains[domain]['total'] += 1
+                if r['is_indexed']:
+                    domains[domain]['indexed'] += 1
+            except Exception as e:
+                logger.warning(f"Error extracting domain from URL {r.get('url', 'unknown')}: {str(e)}")
+                continue
         
         # Calculate domain indexing rates
         domain_stats = []
@@ -86,39 +100,49 @@ class ReportGenerator:
         Returns:
             CSV data as a string
         """
-        # Create a DataFrame from results
-        df = pd.DataFrame(results)
-        
-        # Format column names and values
-        df = df.rename(columns={
-            'url': 'URL',
-            'is_indexed': 'Indexed',
-            'checked_at': 'Checked At'
-        })
-        
-        # Convert boolean to Yes/No
-        df['Indexed'] = df['Indexed'].apply(lambda x: 'Yes' if x else 'No')
-        
-        # Format date
-        df['Checked At'] = df['Checked At'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S'))
-        
-        # Add report information as header rows
-        report_name = f"Report: {report.name}"
-        report_date = f"Generated on: {report.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
-        report_stats = f"Indexed URLs: {report.indexed_urls} / {report.total_urls} ({report.indexed_percentage}%)"
-        
-        # Create CSV buffer
-        buffer = io.StringIO()
-        
-        # Write report header
-        buffer.write(f"{report_name}\n")
-        buffer.write(f"{report_date}\n")
-        buffer.write(f"{report_stats}\n\n")
-        
-        # Write DataFrame to CSV
-        df.to_csv(buffer, index=False)
-        
-        # Get CSV as string
-        csv_data = buffer.getvalue()
-        
-        return csv_data
+        try:
+            # Handle the case of empty results
+            if not results:
+                # Create an empty DataFrame with the expected columns
+                df = pd.DataFrame(columns=['URL', 'Indexed', 'Checked At'])
+            else:
+                # Create a DataFrame from results
+                df = pd.DataFrame(results)
+                
+                # Format column names and values
+                df = df.rename(columns={
+                    'url': 'URL',
+                    'is_indexed': 'Indexed',
+                    'checked_at': 'Checked At'
+                })
+                
+                # Convert boolean to Yes/No
+                df['Indexed'] = df['Indexed'].apply(lambda x: 'Yes' if x else 'No')
+                
+                # Format date
+                df['Checked At'] = df['Checked At'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if x else '')
+            
+            # Add report information as header rows
+            report_name = f"Report: {report.name}"
+            report_date = f"Generated on: {report.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
+            report_stats = f"Indexed URLs: {report.indexed_urls} / {report.total_urls} ({report.indexed_percentage:.1f}%)"
+            
+            # Create CSV buffer
+            buffer = io.StringIO()
+            
+            # Write report header
+            buffer.write(f"{report_name}\n")
+            buffer.write(f"{report_date}\n")
+            buffer.write(f"{report_stats}\n\n")
+            
+            # Write DataFrame to CSV with error handling for encoding issues
+            df.to_csv(buffer, index=False, encoding='utf-8', errors='replace')
+            
+            # Get CSV as string
+            csv_data = buffer.getvalue()
+            
+            return csv_data
+        except Exception as e:
+            logger.error(f"Error generating CSV export: {str(e)}")
+            # Return a simple error CSV
+            return f"Error generating report: {str(e)}"

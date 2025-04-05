@@ -530,35 +530,55 @@ def export_report(report_id):
     results = []
     batch_size = 1000  # Process 1000 URLs at a time to avoid memory issues
     
-    # Get the total number of URLs
-    total_urls = URL.query.count()
-    processed = 0
-    
-    # Process URLs in batches
-    for offset in range(0, total_urls, batch_size):
-        # Get a batch of URLs
-        url_batch = URL.query.order_by(URL.created_at).limit(batch_size).offset(offset).all()
+    try:
+        # Get the total number of URLs
+        total_urls = URL.query.count()
+        processed = 0
         
-        # Process each URL in the batch
-        for url in url_batch:
-            result = CheckResult.query.filter_by(url_id=url.id).filter(
-                CheckResult.checked_at <= report.created_at
-            ).order_by(CheckResult.checked_at.desc()).first()
+        # Process URLs in batches
+        for offset in range(0, total_urls, batch_size):
+            # Get a batch of URLs
+            url_batch = URL.query.order_by(URL.created_at).limit(batch_size).offset(offset).all()
             
-            if result:
-                results.append({
-                    'url': url.url,
-                    'is_indexed': result.is_indexed,
-                    'checked_at': result.checked_at
-                })
+            # Process each URL in the batch
+            for url in url_batch:
+                try:
+                    # Skip URLs with encoding issues 
+                    if not url.url:
+                        continue
+                        
+                    # Try to sanitize the URL to avoid encoding issues
+                    sanitized_url = sanitize_url(url.url)
+                    if not sanitized_url:
+                        logger.warning(f"Skipping URL with encoding issues in export: {url.id}")
+                        continue
+                    
+                    # Get the latest check result for this URL before the report creation date
+                    result = CheckResult.query.filter_by(url_id=url.id).filter(
+                        CheckResult.checked_at <= report.created_at
+                    ).order_by(CheckResult.checked_at.desc()).first()
+                    
+                    if result:
+                        results.append({
+                            'url': sanitized_url, 
+                            'is_indexed': result.is_indexed,
+                            'checked_at': result.checked_at
+                        })
+                except Exception as e:
+                    logger.error(f"Error processing URL {url.id} for export: {str(e)}")
+                    continue
+            
+            processed += len(url_batch)
+            logger.debug(f"CSV Export: Processed {processed} of {total_urls} URLs")
         
-        processed += len(url_batch)
-        logger.debug(f"CSV Export: Processed {processed} of {total_urls} URLs")
-    
-    # Generate CSV report
-    csv_data = report_generator.export_csv(report, results)
-    
-    return csv_data, 200, {
-        'Content-Type': 'text/csv',
-        'Content-Disposition': f'attachment; filename=report_{report_id}.csv'
-    }
+        # Generate CSV report
+        csv_data = report_generator.export_csv(report, results)
+        
+        return csv_data, 200, {
+            'Content-Type': 'text/csv',
+            'Content-Disposition': f'attachment; filename=report_{report_id}.csv'
+        }
+    except Exception as e:
+        logger.error(f"Error exporting report: {str(e)}")
+        flash(f'Error exporting report: {str(e)}', 'danger')
+        return redirect(url_for('report_detail', report_id=report_id))
