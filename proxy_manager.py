@@ -18,12 +18,12 @@ class ProxyManager:
         self.last_update = 0
         self.use_direct_connection = use_direct_connection
         
-        # Default free proxies for demo purposes - these are placeholders
+        # Default free proxies for demo purposes
         # In production, you'd use a paid proxy service or your own proxy list
         self.default_proxies = [
-            'dummy-proxy-1',  # These are just placeholders
-            'dummy-proxy-2',
-            'dummy-proxy-3'
+            '1.2.3.4:8080',  # These are formatted placeholders
+            '5.6.7.8:8080',
+            '9.10.11.12:8080'
         ]
         
         # Load proxies on initialization
@@ -127,7 +127,8 @@ class ProxyManager:
             Response object or None if all retries fail
         """
         retries = 0
-        while retries < max_retries:
+        max_timeouts = 0  # Track consecutive timeouts
+        while retries < max_retries and max_timeouts < 2:  # Limit consecutive timeouts
             # Get proxy configuration (empty dict for direct connection)
             proxy = self.get_next_proxy()
             
@@ -155,12 +156,28 @@ class ProxyManager:
                     return response
                 else:
                     logger.warning(f"Request failed with status {response.status_code}, retrying...")
+                    max_timeouts = 0  # Reset timeout counter on different error
+            except requests.exceptions.ConnectTimeout as e:
+                logger.warning(f"Connection timeout: {str(e)}, retrying...")
+                max_timeouts += 1
+                if max_timeouts >= 2:
+                    # If we get multiple timeouts, switch to direct connection
+                    logger.warning("Multiple timeouts detected, switching to direct connection")
+                    self.use_direct_connection = True
+            except requests.exceptions.ReadTimeout as e:
+                logger.warning(f"Read timeout: {str(e)}, retrying...")
+                max_timeouts += 1
+                if max_timeouts >= 2:
+                    # If we get multiple timeouts, switch to direct connection
+                    logger.warning("Multiple timeouts detected, switching to direct connection")
+                    self.use_direct_connection = True
             except requests.exceptions.RequestException as e:
                 logger.warning(f"Request failed: {str(e)}, retrying...")
+                max_timeouts = 0  # Reset timeout counter on different error
             
             retries += 1
             # Exponential backoff
-            time.sleep(1)  # Reduced from 2**retries to be faster
+            time.sleep(0.5)  # Reduced delay for faster response
         
         logger.error(f"Failed to make request to {url} after {max_retries} retries")
         return None

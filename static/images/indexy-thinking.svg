@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>Indexy Thinking - The Friendly Spider Bot</title>
+    <defs>
+        <radialGradient id="bodyGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+            <stop offset="0%" style="stop-color:#6366F1;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#4F46E5;stop-opacity:1" />
+        </radialGradient>
+    </defs>
+    <g id="Indexy" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <!-- Body -->
+        <circle id="Body" fill="url(#bodyGradient)" cx="100" cy="100" r="60"></circle>
+        
+        <!-- Eyes - Thinking version (one raised eyebrow) -->
+        <g id="Eyes" transform="translate(70, 80)">
+            <!-- Left Eye - Raised eyebrow -->
+            <path id="Left-Eyebrow" d="M5,12 Q20,0 35,10" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"></path>
+            <circle id="Left-Eye-Background" fill="#FFFFFF" cx="20" cy="20" r="12"></circle>
+            <circle id="Left-Eye-Pupil" fill="#000000" cx="20" cy="20" r="6"></circle>
+            <circle id="Left-Eye-Highlight" fill="#FFFFFF" cx="17" cy="17" r="2"></circle>
+            
+            <!-- Right Eye -->
+            <circle id="Right-Eye-Background" fill="#FFFFFF" cx="60" cy="20" r="12"></circle>
+            <circle id="Right-Eye-Pupil" fill="#000000" cx="60" cy="20" r="6"></circle>
+            <circle id="Right-Eye-Highlight" fill="#FFFFFF" cx="57" cy="17" r="2"></circle>
+        </g>
+        
+        <!-- Mouth - Thinking expression -->
+        <path id="Thinking-Mouth" d="M85,122 C90,120 100,125 105,125" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"></path>
+        
+        <!-- Thinking bubble -->
+        <circle id="Bubble-1" fill="#FFFFFF" cx="140" cy="60" r="5" opacity="0.7"></circle>
+        <circle id="Bubble-2" fill="#FFFFFF" cx="150" cy="50" r="8" opacity="0.8"></circle>
+        <circle id="Bubble-3" fill="#FFFFFF" cx="165" cy="40" r="12" opacity="0.9"></circle>
+        
+        <!-- Spider Legs -->
+        <!-- Left Legs -->
+        <path id="Left-Leg-1" d="M50,70 C30,50 15,45 5,50" stroke="#4F46E5" stroke-width="4" stroke-linecap="round"></path>
+        <path id="Left-Leg-2" d="M45,90 C25,85 10,90 5,100" stroke="#4F46E5" stroke-width="4" stroke-linecap="round"></path>
+        <path id="Left-Leg-3" d="M50,110 C30,120 15,135 5,150" stroke="#4F46E5" stroke-width="4" stroke-linecap="round"></path>
+        <path id="Left-Leg-4" d="M65,135 C55,150 35,160 20,165" stroke="#4F46E5" stroke-width="4" stroke-linecap="round"></path>
+        
+        <!-- Right Legs -->
+        <path id="Right-Leg-1" d="M150,70 C170,50 185,45 195,50" stroke="#4F46E5" stroke-width="4" stroke-linecap="round"></path>
+        <path id="Right-Leg-2" d="M155,90 C175,85 190,90 195,100" stroke="#4F46E5" stroke-width="4" stroke-linecap="round"></path>
+        <path id="Right-Leg-3" d="M150,110 C170,120 185,135 195,150" stroke="#4F46E5" stroke-width="4" stroke-linecap="round"></path>
+        <path id="Right-Leg-4" d="M135,135 C145,150 165,160 180,165" stroke="#4F46E5" stroke-width="4" stroke-linecap="round"></path>
+        
+        <!-- Antenna -->
+        <path id="Left-Antenna" d="M85,60 C80,45 70,35 60,30" stroke="#4F46E5" stroke-width="3" stroke-linecap="round"></path>
+        <circle id="Left-Antenna-Tip" fill="#6366F1" cx="60" cy="30" r="4"></circle>
+        
+        <path id="Right-Antenna" d="M115,60 C120,45 130,35 140,30" stroke="#4F46E5" stroke-width="3" stroke-linecap="round"></path>
+        <circle id="Right-Antenna-Tip" fill="#6366F1" cx="140" cy="30" r="4"></circle>
+        
+        <!-- The Web -->
+        <circle id="Web-Outer" stroke="#DDDDDD" stroke-width="1" stroke-dasharray="2,2" cx="100" cy="100" r="85" opacity="0.6"></circle>
+        <circle id="Web-Middle" stroke="#DDDDDD" stroke-width="1" stroke-dasharray="2,2" cx="100" cy="100" r="75" opacity="0.6"></circle>
+        <circle id="Web-Inner" stroke="#DDDDDD" stroke-width="1" stroke-dasharray="2,2" cx="100" cy="100" r="65" opacity="0.6"></circle>
+        
+        <!-- Web Lines -->
+        <line x1="100" y1="15" x2="100" y2="185" stroke="#DDDDDD" stroke-width="1" stroke-dasharray="2,2" opacity="0.6"></line>
+        <line x1="15" y1="100" x2="185" y2="100" stroke="#DDDDDD" stroke-width="1" stroke-dasharray="2,2" opacity="0.6"></line>
+        <line x1="36" y1="36" x2="164" y2="164" stroke="#DDDDDD" stroke-width="1" stroke-dasharray="2,2" opacity="0.6"></line>
+        <line x1="36" y1="164" x2="164" y2="36" stroke="#DDDDDD" stroke-width="1" stroke-dasharray="2,2" opacity="0.6"></line>
+    </g>
+</svg>

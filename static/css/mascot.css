@@ -1,0 +1,198 @@
+/* CSS for Indexy Spider Mascot */
+
+/* Main mascot container */
+.mascot-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 200px;
+    height: 200px;
+    z-index: 1000;
+}
+
+/* Spider character styling */
+.mascot-spider {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 100px;
+    height: 100px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+/* Spider body */
+.mascot-body {
+    position: absolute;
+    bottom: 10px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    background-color: var(--bs-dark);
+    border-radius: 50%;
+    border: 2px solid var(--bs-info);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+/* Spider eyes */
+.mascot-eyes {
+    position: relative;
+    width: 40px;
+    height: 20px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.mascot-eye {
+    width: 16px;
+    height: 16px;
+    background-color: white;
+    border-radius: 50%;
+    position: relative;
+}
+
+.mascot-pupil {
+    width: 8px;
+    height: 8px;
+    background-color: black;
+    border-radius: 50%;
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    transition: all 0.2s ease;
+}
+
+/* Spider legs */
+.mascot-legs {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    bottom: 40px;
+    right: 0;
+}
+
+.mascot-leg {
+    position: absolute;
+    width: 50px;
+    height: 2px;
+    background-color: var(--bs-info);
+    transform-origin: right center;
+    transition: all 0.4s ease;
+}
+
+.mascot-leg-1 { transform: rotate(30deg); top: 25px; right: 50px; }
+.mascot-leg-2 { transform: rotate(60deg); top: 40px; right: 50px; }
+.mascot-leg-3 { transform: rotate(120deg); top: 60px; right: 50px; }
+.mascot-leg-4 { transform: rotate(150deg); top: 75px; right: 50px; }
+.mascot-leg-5 { transform: rotate(-30deg); top: 25px; right: 50px; }
+.mascot-leg-6 { transform: rotate(-60deg); top: 40px; right: 50px; }
+.mascot-leg-7 { transform: rotate(-120deg); top: 60px; right: 50px; }
+.mascot-leg-8 { transform: rotate(-150deg); top: 75px; right: 50px; }
+
+/* State animations */
+.mascot-state-happy .mascot-body {
+    background-color: var(--bs-success);
+    transform: scale(1.1);
+}
+
+.mascot-state-thinking .mascot-body {
+    background-color: var(--bs-warning);
+}
+
+.mascot-state-thinking .mascot-pupil {
+    top: 2px;
+}
+
+.mascot-state-working .mascot-body {
+    background-color: var(--bs-primary);
+}
+
+.mascot-state-working .mascot-leg {
+    animation: leg-wiggle 1.2s infinite alternate;
+}
+
+.mascot-state-working .mascot-leg-1,
+.mascot-state-working .mascot-leg-3,
+.mascot-state-working .mascot-leg-5,
+.mascot-state-working .mascot-leg-7 {
+    animation-delay: 0s;
+}
+
+.mascot-state-working .mascot-leg-2,
+.mascot-state-working .mascot-leg-4,
+.mascot-state-working .mascot-leg-6,
+.mascot-state-working .mascot-leg-8 {
+    animation-delay: 0.6s;
+}
+
+@keyframes leg-wiggle {
+    0% { transform: rotate(30deg); }
+    100% { transform: rotate(40deg); }
+}
+
+@keyframes leg-wiggle-2 {
+    0% { transform: rotate(60deg); }
+    100% { transform: rotate(70deg); }
+}
+
+/* Speech bubble styling */
+.mascot-speech {
+    position: absolute;
+    bottom: 100px;
+    right: 50px;
+    width: 200px;
+    padding: 10px;
+    background-color: var(--bs-dark);
+    border: 2px solid var(--bs-info);
+    border-radius: 10px;
+    color: white;
+    font-size: 14px;
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+.mascot-speech:after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    right: 30px;
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 10px solid var(--bs-info);
+}
+
+.mascot-speech.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+/* Hover effects */
+.mascot-spider:hover .mascot-body {
+    transform: scale(1.1);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .mascot-container {
+        width: 150px;
+        height: 150px;
+    }
+    
+    .mascot-speech {
+        width: 150px;
+        font-size: 12px;
+        right: 40px;
+    }
+    
+    .mascot-body {
+        width: 50px;
+        height: 50px;
+    }
+}
