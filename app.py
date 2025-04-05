@@ -37,8 +37,28 @@ else:
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
+    "pool_size": 10,
+    "max_overflow": 20,
+    "pool_timeout": 30,
 }
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+def check_db_connection():
+    """Check if database connection is healthy."""
+    try:
+        db.session.execute(text('SELECT 1'))
+        return True
+    except Exception as e:
+        logger.error(f"Database connection error: {str(e)}")
+        return False
+
+# Add health check endpoint
+@app.route('/health')
+def health_check():
+    if check_db_connection():
+        return jsonify({'status': 'healthy', 'database': 'connected'}), 200
+    return jsonify({'status': 'unhealthy', 'database': 'disconnected'}), 503
+
 
 # Initialize the app with the extension
 db.init_app(app)
@@ -288,8 +308,15 @@ def check_urls():
             if file and file.filename and (file.filename.endswith('.txt') or file.filename.endswith('.csv')):
                 try:
                     # Read file content as text with a smaller buffer size
+                    max_file_size = 100 * 1024 * 1024  # 100MB limit
                     file_content = ""
+                    total_size = 0
+                    
                     for chunk in iter(lambda: file.stream.read(8192).decode('utf-8', errors='ignore'), ""):
+                        total_size += len(chunk.encode('utf-8'))
+                        if total_size > max_file_size:
+                            flash('File size exceeds maximum limit of 100MB', 'danger')
+                            return redirect(url_for('index'))
                         file_content += chunk
                         
                     file_urls = [url.strip() for url in file_content.split('\n') if url.strip()]
