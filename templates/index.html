@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-search"></i> Check URL Indexing Status
+                </h4>
+            </div>
+            <div class="card-body">
+                <p class="card-text">
+                    Enter URLs to check if they are indexed on Google. Enter one URL per line.
+                    Our system will rotate IP addresses for each request to avoid rate limiting.
+                </p>
+                
+                <form action="{{ url_for('check_urls') }}" method="POST">
+                    <div class="mb-3">
+                        <label for="urls" class="form-label">URLs to check:</label>
+                        <textarea class="form-control" id="urls" name="urls" rows="10" placeholder="https://example.com
+https://another-example.com
+https://third-example.com" required></textarea>
+                        <small class="form-text text-muted">Enter up to 50 URLs at a time for best performance.</small>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-check-circle"></i> Check URLs
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer">
+                <div class="row">
+                    <div class="col-md-4 text-center mb-3 mb-md-0">
+                        <div class="feature">
+                            <i class="fas fa-random fa-2x text-info"></i>
+                            <h5 class="mt-2">IP Rotation</h5>
+                            <p class="small text-muted">Automated proxy rotation for each request</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center mb-3 mb-md-0">
+                        <div class="feature">
+                            <i class="fas fa-database fa-2x text-success"></i>
+                            <h5 class="mt-2">Result Storage</h5>
+                            <p class="small text-muted">All check results are stored for future reference</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <div class="feature">
+                            <i class="fas fa-file-alt fa-2x text-warning"></i>
+                            <h5 class="mt-2">Reports</h5>
+                            <p class="small text-muted">Generate detailed reports with statistics</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4 shadow">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-info-circle"></i> How It Works
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <h5><i class="fas fa-cogs text-primary"></i> System Features</h5>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">Rotates IP addresses for each URL check</li>
+                            <li class="list-group-item">Checks if URLs are indexed on Google</li>
+                            <li class="list-group-item">Stores results in a database</li>
+                            <li class="list-group-item">Generates comprehensive reports</li>
+                            <li class="list-group-item">Includes proper error handling and retries</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5><i class="fas fa-question-circle text-warning"></i> Why Check Indexing?</h5>
+                        <p>Knowing if your URLs are indexed by Google is crucial for:</p>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">SEO performance monitoring</li>
+                            <li class="list-group-item">Content visibility verification</li>
+                            <li class="list-group-item">Website troubleshooting</li>
+                            <li class="list-group-item">Competitor analysis</li>
+                            <li class="list-group-item">Marketing campaign tracking</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
