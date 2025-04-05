@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -525,13 +525,10 @@ def report_detail(report_id):
 @app.route('/export_report/<int:report_id>')
 def export_report(report_id):
     try:
-        # Fetch the report without complex joins
+        # Fetch the report 
         report = Report.query.get_or_404(report_id)
         
-        # Generate a simplified CSV report that doesn't depend on querying URLs
-        # This avoids the encoding issues by not fetching the problematic data at all
-        
-        # Create a CSV string manually
+        # Create a CSV string manually to avoid encoding issues
         csv_lines = []
         
         # Add report header
@@ -543,8 +540,68 @@ def export_report(report_id):
         # Add CSV headers
         csv_lines.append("URL,Indexed,Checked At")
         
-        # Create a simplified dataset with just the report summary
-        csv_lines.append(f"Summary of {report.total_urls} URLs,{report.indexed_urls} indexed,{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}")
+        # Get all URLs and their latest check results directly from the database
+        # Use a direct SQL query with proper encoding handling
+        indexed_urls = []
+        not_indexed_urls = []
+        
+        # Process URLs in batches to avoid memory issues
+        batch_size = 100
+        offset = 0
+        
+        while True:
+            # Use the session execute method to run raw SQL which avoids some encoding issues
+            query = text("""
+                SELECT u.url, c.is_indexed, c.checked_at 
+                FROM urls u
+                LEFT JOIN check_results c ON u.id = c.url_id
+                ORDER BY u.url
+                LIMIT :limit OFFSET :offset
+            """)
+            
+            result = db.session.execute(query, {"limit": batch_size, "offset": offset})
+            
+            # Process this batch
+            rows = result.fetchall()
+            if not rows:
+                break
+                
+            for row in rows:
+                try:
+                    # Try to sanitize the URL to avoid encoding issues
+                    url = str(row[0])
+                    is_indexed = bool(row[1]) if row[1] is not None else False
+                    checked_at = row[2].strftime('%Y-%m-%d %H:%M:%S') if row[2] else ""
+                    
+                    # Replace any problematic characters with safe versions
+                    url = url.replace('"', '""')  # Escape quotes for CSV
+                    
+                    # Add to the appropriate list
+                    csv_line = f'"{url}",{"Yes" if is_indexed else "No"},{checked_at}'
+                    
+                    if is_indexed:
+                        indexed_urls.append(csv_line)
+                    else:
+                        not_indexed_urls.append(csv_line)
+                        
+                except Exception as e:
+                    logger.warning(f"Error processing URL for export: {str(e)}")
+                    continue
+            
+            # Move to the next batch
+            offset += batch_size
+        
+        # Add indexed URLs section
+        if indexed_urls:
+            csv_lines.append("")
+            csv_lines.append("INDEXED URLS:")
+            csv_lines.extend(indexed_urls)
+        
+        # Add not indexed URLs section
+        if not_indexed_urls:
+            csv_lines.append("")
+            csv_lines.append("NOT INDEXED URLS:")
+            csv_lines.extend(not_indexed_urls)
         
         # Join lines with newlines
         csv_data = "\n".join(csv_lines)
@@ -552,7 +609,7 @@ def export_report(report_id):
         # Return the CSV data with appropriate headers
         return csv_data, 200, {
             'Content-Type': 'text/csv', 
-            'Content-Disposition': f'attachment; filename=report_{report_id}_summary.csv'
+            'Content-Disposition': f'attachment; filename=report_{report_id}.csv'
         }
         
     except Exception as e:
