@@ -564,12 +564,42 @@ def report_detail(report_id):
 @app.route('/export_report/<int:report_id>')
 def export_report(report_id):
     from sqlalchemy import text
+    BATCH_SIZE = 1000
     try:
         # First verify database connection
         db.session.execute(text('SELECT 1'))
         db.session.commit()
         # Fetch the report
         report = Report.query.get_or_404(report_id)
+        
+        # Process URLs in batches
+        indexed_urls = []
+        not_indexed_urls = []
+        
+        # Get total URL count
+        total_urls = URL.query.count()
+        processed = 0
+        
+        while processed < total_urls:
+            urls_batch = URL.query.offset(processed).limit(BATCH_SIZE).all()
+            if not urls_batch:
+                break
+                
+            for url in urls_batch:
+                check_result = CheckResult.query.filter_by(url_id=url.id).order_by(CheckResult.checked_at.desc()).limit(1).first()
+                if check_result:
+                    url_data = [
+                        url.url,
+                        "Yes" if check_result.is_indexed else "No",
+                        check_result.checked_at.strftime('%Y-%m-%d %H:%M:%S')
+                    ]
+                    if check_result.is_indexed:
+                        indexed_urls.append(url_data)
+                    else:
+                        not_indexed_urls.append(url_data)
+            
+            processed += len(urls_batch)
+            db.session.expire_all()
         
         # Create a CSV string buffer
         buffer = io.StringIO()
