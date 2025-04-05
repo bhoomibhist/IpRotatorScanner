@@ -78,6 +78,8 @@ def process_url_dataset(urls, batch_size):
         background_process_state['processed_urls'] = 0
         background_process_state['is_processing'] = True
         
+        logger.info(f"Background processing started for {len(urls)} URLs")
+        
         # Store URLs in database if they don't exist (in batches)
         new_urls = []
         
@@ -97,6 +99,11 @@ def process_url_dataset(urls, batch_size):
                 db.session.commit()
                 logger.debug(f"Added batch of {len(new_urls)} new URLs to the database")
                 new_urls = []
+            
+            # Update progress after storing URLs
+            processed = min(i + batch_size, len(urls)) // 2  # 50% progress for storage phase
+            background_process_state['processed_urls'] = processed
+            logger.debug(f"Storage phase progress: {processed}/{len(urls)} URLs processed ({(processed/len(urls)*100):.1f}%)")
         
         # Process URLs in batches to handle large numbers efficiently
         all_results = {}
@@ -121,9 +128,14 @@ def process_url_dataset(urls, batch_size):
             db.session.commit()
             
             # Update progress in global state
-            processed = min(i + batch_size, len(urls))
+            # We're in the second phase, so we calculate progress from 50% to 100%
+            base_progress = len(urls) // 2  # 50% already done in storage phase
+            batch_progress = min(i + batch_size, len(urls)) // 2  # Up to another 50%
+            processed = base_progress + batch_progress
             background_process_state['processed_urls'] = processed
-            logger.debug(f"Progress: {processed}/{len(urls)} URLs processed ({(processed/len(urls)*100):.1f}%)")
+            
+            percent = (processed / len(urls)) * 100
+            logger.debug(f"Processing phase progress: {processed}/{len(urls)} URLs processed ({percent:.1f}%)")
         
         # Create a report
         report = Report(
@@ -135,6 +147,8 @@ def process_url_dataset(urls, batch_size):
         db.session.add(report)
         db.session.commit()
         
+        # Ensure progress shows 100% when complete
+        background_process_state['processed_urls'] = len(urls)
         logger.info(f"Successfully processed {len(urls)} URLs in background")
     
     except Exception as e:
@@ -163,13 +177,41 @@ def processing():
     total_urls = background_process_state['total_urls']
     processed_urls = background_process_state['processed_urls']
     
+    # Log the current state for debugging
+    logger.debug(f"Processing status: is_processing={is_processing}, total={total_urls}, processed={processed_urls}")
+    
     # If not processing or complete, redirect to results
-    if not is_processing:
+    if not is_processing and processed_urls >= total_urls and total_urls > 0:
         return redirect(url_for('results'))
     
     return render_template('processing.html', 
                           total_urls=total_urls,
                           processed_urls=processed_urls)
+
+@app.route('/api/progress')
+def get_progress():
+    """AJAX endpoint for getting real-time progress updates"""
+    global background_process_state
+    
+    total = background_process_state['total_urls']
+    processed = background_process_state['processed_urls']
+    is_processing = background_process_state['is_processing']
+    
+    # Calculate percentage
+    percentage = (processed / total * 100) if total > 0 else 0
+    
+    # If processing complete, redirect to results page
+    done = False
+    if not is_processing and processed >= total and total > 0:
+        done = True
+    
+    return jsonify({
+        'total': total,
+        'processed': processed,
+        'percentage': round(percentage, 1),
+        'is_processing': is_processing,
+        'done': done
+    })
 
 @app.route('/check', methods=['POST'])
 def check_urls():

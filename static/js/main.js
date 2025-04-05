@@ -1,65 +1,66 @@
 /**
  * Main JavaScript file for URL Indexing Checker
  */
-
 document.addEventListener('DOMContentLoaded', function() {
-    // Enable tooltips everywhere
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    // Initialize all tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
+        return new bootstrap.Tooltip(tooltipTriggerEl)
     });
     
-    // Enable popovers
-    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
-    var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
-        return new bootstrap.Popover(popoverTriggerEl);
-    });
-    
-    // Auto-dismiss alerts after 5 seconds
-    setTimeout(function() {
-        var alerts = document.querySelectorAll('.alert');
-        alerts.forEach(function(alert) {
-            var bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-        });
-    }, 5000);
-    
-    // Handle URL input validation
-    var urlTextarea = document.getElementById('urls');
-    if (urlTextarea) {
-        urlTextarea.addEventListener('input', function() {
-            var lines = this.value.split('\n');
-            if (lines.length > 100000) {
-                this.setCustomValidity('Please enter no more than 100000 URLs at a time.');
-            } else {
-                this.setCustomValidity('');
-            }
-        });
-    }
-    
-    // Handle form submission with loading state
-    var checkForm = document.querySelector('form[action*="check"]');
-    if (checkForm) {
-        checkForm.addEventListener('submit', function(e) {
-            var submitBtn = this.querySelector('button[type="submit"]');
-            if (submitBtn) {
-                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Checking...';
-                submitBtn.disabled = true;
-            }
-        });
-    }
-    
-    // Initialize any charts that might be present on the page
+    // Initialize any charts if they exist
     initializeCharts();
+    
+    // File upload handling
+    const fileInput = document.getElementById('url-file');
+    const fileLabel = document.querySelector('.custom-file-upload');
+    
+    if (fileInput && fileLabel) {
+        fileInput.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                const fileName = e.target.files[0].name;
+                fileLabel.querySelector('p').textContent = `Selected file: ${fileName}`;
+                fileLabel.querySelector('i').classList.remove('fa-upload');
+                fileLabel.querySelector('i').classList.add('fa-check');
+            } else {
+                fileLabel.querySelector('p').textContent = 'Drag & drop a file or click to select';
+                fileLabel.querySelector('i').classList.remove('fa-check');
+                fileLabel.querySelector('i').classList.add('fa-upload');
+            }
+        });
+    }
 });
 
 /**
  * Initializes any Chart.js charts that might be on the page
  */
 function initializeCharts() {
-    // This function is a placeholder for any chart initialization
-    // Specific chart initialization is done in the respective template files
-    // using page-specific <script> blocks
+    const indexingChart = document.getElementById('indexingChart');
+    if (indexingChart) {
+        const indexedCount = parseInt(indexingChart.getAttribute('data-indexed'));
+        const notIndexedCount = parseInt(indexingChart.getAttribute('data-not-indexed'));
+        
+        new Chart(indexingChart, {
+            type: 'doughnut',
+            data: {
+                labels: ['Indexed', 'Not Indexed'],
+                datasets: [{
+                    data: [indexedCount, notIndexedCount],
+                    backgroundColor: ['#198754', '#dc3545'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
 }
 
 /**

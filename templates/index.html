@@ -3,115 +3,67 @@
 {% block content %}
 <div class="row">
     <div class="col-lg-8 mx-auto">
-        <!-- Demo Mode Alert -->
-        <div class="alert alert-info alert-dismissible fade show" role="alert">
-            <strong><i class="fas fa-info-circle"></i> Demo Mode Active:</strong> 
-            This application is running in demo mode and will simulate checking URL indexing status without making actual Google requests. Now supports up to 1 million URLs at once!
-            Results are based on heuristic factors that mimic real-world indexing patterns.
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        
         <div class="card shadow">
             <div class="card-header bg-primary text-white">
                 <h4 class="mb-0">
-                    <i class="fas fa-search"></i> Check URL Indexing Status
+                    <i class="fas fa-search"></i> Check URL Indexing
                 </h4>
             </div>
             <div class="card-body">
-                <p class="card-text">
-                    Enter URLs to check if they are indexed on Google. Enter one URL per line.
-                    In production, our system rotates IP addresses to avoid Google's rate limiting.
-                </p>
-                
-                <form action="{{ url_for('check_urls') }}" method="POST" enctype="multipart/form-data">
-                    <div class="mb-3">
-                        <label for="urls" class="form-label">Enter URLs to check:</label>
-                        <textarea class="form-control" id="urls" name="urls" rows="10" placeholder="https://example.com
-https://github.com
-https://wikipedia.org
-https://wordpress.com"></textarea>
-                        <small class="form-text text-muted">Enter URLs directly (one per line) or upload a file below.</small>
+                <form action="{{ url_for('check_urls') }}" method="post" enctype="multipart/form-data">
+                    <div class="mb-4">
+                        <label for="urls" class="form-label">Enter URLs (one per line)</label>
+                        <textarea class="form-control" id="urls" name="urls" rows="6" placeholder="https://example.com/page1
+https://example.com/page2
+https://example.com/page3"></textarea>
                     </div>
                     
-                    <div class="mb-3">
-                        <label for="url_file" class="form-label">Or upload a file with URLs:</label>
-                        <input class="form-control" type="file" id="url_file" name="url_file" accept=".txt,.csv">
-                        <small class="form-text text-muted">For large datasets (up to 1,000,000 URLs), upload a text file with one URL per line.</small>
+                    <div class="mb-4">
+                        <label class="form-label">OR Upload a File (TXT or CSV)</label>
+                        <label for="url_file" class="custom-file-upload d-block">
+                            <i class="fas fa-upload"></i>
+                            <p>Drag & drop a file or click to select</p>
+                        </label>
+                        <input type="file" class="d-none" id="url_file" name="url_file" accept=".txt,.csv">
+                        <div class="form-text">Supports up to 100MB and 1 million URLs</div>
                     </div>
                     
-                    <div class="alert alert-light border mb-3">
+                    <div class="mb-4">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="batch_process" name="batch_process" value="true" checked>
                             <label class="form-check-label" for="batch_process">
-                                Process in batches (recommended for large datasets)
+                                Process in smaller batches (recommended for large datasets)
                             </label>
                         </div>
-                        <small class="text-muted">This option processes URLs in smaller batches for better performance with large datasets.</small>
                     </div>
                     
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
                             <i class="fas fa-check-circle"></i> Check URLs
                         </button>
                     </div>
                 </form>
             </div>
-            <div class="card-footer">
-                <div class="row">
-                    <div class="col-md-4 text-center mb-3 mb-md-0">
-                        <div class="feature">
-                            <i class="fas fa-random fa-2x text-info"></i>
-                            <h5 class="mt-2">IP Rotation</h5>
-                            <p class="small text-muted">Automated proxy rotation for each request</p>
-                        </div>
-                    </div>
-                    <div class="col-md-4 text-center mb-3 mb-md-0">
-                        <div class="feature">
-                            <i class="fas fa-database fa-2x text-success"></i>
-                            <h5 class="mt-2">Result Storage</h5>
-                            <p class="small text-muted">All check results are stored for future reference</p>
-                        </div>
-                    </div>
-                    <div class="col-md-4 text-center">
-                        <div class="feature">
-                            <i class="fas fa-file-alt fa-2x text-warning"></i>
-                            <h5 class="mt-2">Reports</h5>
-                            <p class="small text-muted">Generate detailed reports with statistics</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
         
-        <div class="card mt-4 shadow">
+        <div class="card shadow mt-4">
             <div class="card-header bg-info text-white">
-                <h4 class="mb-0">
-                    <i class="fas fa-info-circle"></i> How It Works
-                </h4>
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle"></i> About URL Indexing Checker
+                </h5>
             </div>
             <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6 mb-3 mb-md-0">
-                        <h5><i class="fas fa-cogs text-primary"></i> System Features</h5>
-                        <ul class="list-group list-group-flush">
-                            <li class="list-group-item">Rotates IP addresses for each URL check</li>
-                            <li class="list-group-item">Checks if URLs are indexed on Google</li>
-                            <li class="list-group-item">Stores results in a database</li>
-                            <li class="list-group-item">Generates comprehensive reports</li>
-                            <li class="list-group-item">Includes proper error handling and retries</li>
-                        </ul>
-                    </div>
-                    <div class="col-md-6">
-                        <h5><i class="fas fa-question-circle text-warning"></i> Why Check Indexing?</h5>
-                        <p>Knowing if your URLs are indexed by Google is crucial for:</p>
-                        <ul class="list-group list-group-flush">
-                            <li class="list-group-item">SEO performance monitoring</li>
-                            <li class="list-group-item">Content visibility verification</li>
-                            <li class="list-group-item">Website troubleshooting</li>
-                            <li class="list-group-item">Competitor analysis</li>
-                            <li class="list-group-item">Marketing campaign tracking</li>
-                        </ul>
-                    </div>
+                <p>This tool allows you to check whether your URLs are indexed on Google. It efficiently processes large datasets, handles up to one million URLs, and provides detailed reports.</p>
+                
+                <div class="alert alert-secondary">
+                    <h6><i class="fas fa-lightbulb"></i> Features:</h6>
+                    <ul class="mb-0">
+                        <li>Check up to 1,000,000 URLs at once</li>
+                        <li>IP address rotation to avoid rate limiting</li>
+                        <li>Detailed reports with indexation rate statistics</li>
+                        <li>CSV export functionality for further analysis</li>
+                        <li>Batch processing for optimal performance</li>
+                    </ul>
                 </div>
             </div>
         </div>
