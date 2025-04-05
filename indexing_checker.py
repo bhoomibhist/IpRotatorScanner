@@ -4,7 +4,7 @@ import re
 import requests
 import hashlib
 import random
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional, Union
 from urllib.parse import quote_plus, urlparse
 from proxy_manager import ProxyManager
 
@@ -16,7 +16,7 @@ class IndexingChecker:
     In demo mode, it simulates checking without making actual Google requests.
     """
     
-    def __init__(self, proxy_manager: ProxyManager = None, demo_mode=True):
+    def __init__(self, proxy_manager=None, demo_mode=True):
         # Always use direct connection in demo mode to avoid timeouts
         self.proxy_manager = proxy_manager or ProxyManager(use_direct_connection=True)
         self.search_url = "https://www.google.com/search"

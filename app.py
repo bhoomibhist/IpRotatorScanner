@@ -223,22 +223,30 @@ def check_urls():
     # Get URLs from either form textarea or uploaded file
     urls = []
     
-    # Check if a file was uploaded
-    if 'url_file' in request.files and request.files['url_file'].filename:
-        file = request.files['url_file']
-        
-        # Check if it's a valid file
-        if file and file.filename.endswith(('.txt', '.csv')):
-            try:
-                # Read file content as text
-                file_content = file.read().decode('utf-8')
-                file_urls = [url.strip() for url in file_content.split('\n') if url.strip()]
-                urls.extend(file_urls)
-                logger.info(f"Loaded {len(file_urls)} URLs from uploaded file {file.filename}")
-            except Exception as e:
-                logger.error(f"Error reading uploaded file: {str(e)}")
-                flash(f'Error reading file: {str(e)}', 'danger')
-                return redirect(url_for('index'))
+    # Check if a file was uploaded - use a safer approach
+    try:
+        if request.files and 'url_file' in request.files:
+            file = request.files['url_file']
+            
+            # Check if it's a valid file with a name
+            if file and file.filename and (file.filename.endswith('.txt') or file.filename.endswith('.csv')):
+                try:
+                    # Read file content as text with a smaller buffer size
+                    file_content = ""
+                    for chunk in iter(lambda: file.stream.read(8192).decode('utf-8', errors='ignore'), ""):
+                        file_content += chunk
+                        
+                    file_urls = [url.strip() for url in file_content.split('\n') if url.strip()]
+                    urls.extend(file_urls)
+                    logger.info(f"Loaded {len(file_urls)} URLs from uploaded file {file.filename}")
+                except Exception as e:
+                    logger.error(f"Error reading uploaded file: {str(e)}")
+                    flash(f'Error reading file: {str(e)}', 'danger')
+                    return redirect(url_for('index'))
+    except Exception as e:
+        logger.error(f"Error accessing file uploads: {str(e)}")
+        flash(f'Error processing file upload: {str(e)}', 'danger')
+        return redirect(url_for('index'))
     
     # Also check the textarea for URLs
     urls_text = request.form.get('urls', '')
