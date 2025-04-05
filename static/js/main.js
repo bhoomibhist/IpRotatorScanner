@@ -29,8 +29,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (urlTextarea) {
         urlTextarea.addEventListener('input', function() {
             var lines = this.value.split('\n');
-            if (lines.length > 50) {
-                this.setCustomValidity('Please enter no more than 50 URLs at a time.');
+            if (lines.length > 100000) {
+                this.setCustomValidity('Please enter no more than 100000 URLs at a time.');
             } else {
                 this.setCustomValidity('');
             }

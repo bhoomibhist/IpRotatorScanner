@@ -52,57 +52,52 @@ proxy_manager = ProxyManager(use_direct_connection=True)
 indexing_checker = IndexingChecker(proxy_manager, demo_mode=True)
 report_generator = ReportGenerator()
 
-# Create database tables
-with app.app_context():
-    db.create_all()
-    logger.debug("Database tables created")
+# Shared state for tracking background process progress
+# since we can't directly access Flask session in background threads
+background_process_state = {
+    'total_urls': 0,
+    'processed_urls': 0,
+    'is_processing': False
+}
 
-# Routes
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/check', methods=['POST'])
-def check_urls():
-    urls_text = request.form.get('urls', '')
-    urls = [url.strip() for url in urls_text.split('\n') if url.strip()]
+# Function to process URLs in a background thread
+def process_url_dataset(urls, batch_size):
+    """
+    Process a large URL dataset in batches using the indexing checker.
+    This function is intended to be run in a background thread for large datasets.
     
-    if not urls:
-        flash('Please enter at least one URL to check.', 'danger')
-        return redirect(url_for('index'))
+    Args:
+        urls: List of URLs to process
+        batch_size: Number of URLs to process in each batch
+    """
+    global background_process_state
     
-    # Set a very high limit for URL checking (1 million)
-    max_urls = 1000000
-    
-    # Truncate if there are too many URLs
-    if len(urls) > max_urls:
-        urls = urls[:max_urls]
-        flash(f'Processing the first {max_urls} URLs.', 'warning')
-    
-    # Store URLs in database if they don't exist
-    # Use batch processing for better performance with large datasets
-    new_urls = []
-    batch_size = 1000
-    
-    for i in range(0, len(urls), batch_size):
-        batch = urls[i:i+batch_size]
-        
-        # Process this batch
-        for url_str in batch:
-            url = URL.query.filter_by(url=url_str).first()
-            if not url:
-                url = URL(url=url_str)
-                db.session.add(url)
-                new_urls.append(url)
-        
-        # Commit this batch to avoid large transactions
-        if new_urls:
-            db.session.commit()
-            logger.debug(f"Added batch of {len(new_urls)} new URLs to the database")
-            new_urls = []
-    
-    # Start checking the URLs
     try:
+        # Set initial state
+        background_process_state['total_urls'] = len(urls)
+        background_process_state['processed_urls'] = 0
+        background_process_state['is_processing'] = True
+        
+        # Store URLs in database if they don't exist (in batches)
+        new_urls = []
+        
+        for i in range(0, len(urls), batch_size):
+            batch = urls[i:i+batch_size]
+            
+            # Process this batch
+            for url_str in batch:
+                url = URL.query.filter_by(url=url_str).first()
+                if not url:
+                    url = URL(url=url_str)
+                    db.session.add(url)
+                    new_urls.append(url)
+            
+            # Commit this batch to avoid large transactions
+            if new_urls:
+                db.session.commit()
+                logger.debug(f"Added batch of {len(new_urls)} new URLs to the database")
+                new_urls = []
+        
         # Process URLs in batches to handle large numbers efficiently
         all_results = {}
         
@@ -124,7 +119,186 @@ def check_urls():
             
             # Commit after each batch
             db.session.commit()
-            logger.debug(f"Saved batch of check results to database ({i+1}-{min(i+batch_size, len(urls))} of {len(urls)})")
+            
+            # Update progress in global state
+            processed = min(i + batch_size, len(urls))
+            background_process_state['processed_urls'] = processed
+            logger.debug(f"Progress: {processed}/{len(urls)} URLs processed ({(processed/len(urls)*100):.1f}%)")
+        
+        # Create a report
+        report = Report(
+            name=f"Report {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}",
+            created_at=datetime.utcnow(),
+            total_urls=len(urls),
+            indexed_urls=sum(1 for is_indexed in all_results.values() if is_indexed)
+        )
+        db.session.add(report)
+        db.session.commit()
+        
+        logger.info(f"Successfully processed {len(urls)} URLs in background")
+    
+    except Exception as e:
+        logger.error(f"Error in background URL processing: {str(e)}")
+    finally:
+        # Make sure to update the state even in case of error
+        background_process_state['is_processing'] = False
+
+# Create database tables
+with app.app_context():
+    db.create_all()
+    logger.debug("Database tables created")
+
+# Routes
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/processing')
+def processing():
+    """Show processing status for large URL sets"""
+    global background_process_state
+    
+    # Check if there's an ongoing process
+    is_processing = background_process_state['is_processing']
+    total_urls = background_process_state['total_urls']
+    processed_urls = background_process_state['processed_urls']
+    
+    # If not processing or complete, redirect to results
+    if not is_processing:
+        return redirect(url_for('results'))
+    
+    return render_template('processing.html', 
+                          total_urls=total_urls,
+                          processed_urls=processed_urls)
+
+@app.route('/check', methods=['POST'])
+def check_urls():
+    global background_process_state
+    
+    # Configure app for large file uploads
+    app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB limit for file uploads
+    
+    # Get URLs from either form textarea or uploaded file
+    urls = []
+    
+    # Check if a file was uploaded
+    if 'url_file' in request.files and request.files['url_file'].filename:
+        file = request.files['url_file']
+        
+        # Check if it's a valid file
+        if file and file.filename.endswith(('.txt', '.csv')):
+            try:
+                # Read file content as text
+                file_content = file.read().decode('utf-8')
+                file_urls = [url.strip() for url in file_content.split('\n') if url.strip()]
+                urls.extend(file_urls)
+                logger.info(f"Loaded {len(file_urls)} URLs from uploaded file {file.filename}")
+            except Exception as e:
+                logger.error(f"Error reading uploaded file: {str(e)}")
+                flash(f'Error reading file: {str(e)}', 'danger')
+                return redirect(url_for('index'))
+    
+    # Also check the textarea for URLs
+    urls_text = request.form.get('urls', '')
+    if urls_text:
+        textarea_urls = [url.strip() for url in urls_text.split('\n') if url.strip()]
+        urls.extend(textarea_urls)
+        logger.info(f"Added {len(textarea_urls)} URLs from form textarea")
+    
+    # Make sure we have at least one URL
+    if not urls:
+        flash('Please enter at least one URL to check or upload a file with URLs.', 'danger')
+        return redirect(url_for('index'))
+    
+    # Set a very high limit for URL checking (1 million)
+    max_urls = 1000000
+    
+    # Truncate if there are too many URLs
+    if len(urls) > max_urls:
+        urls = urls[:max_urls]
+        flash(f'Processing the first {max_urls} URLs.', 'warning')
+    
+    # Check if batch processing is enabled
+    batch_process = request.form.get('batch_process') == 'true'
+    
+    # Use larger batch size if batch processing is disabled
+    batch_size = 1000 if batch_process else 10000
+    
+    # For large datasets, use background processing
+    is_large_dataset = len(urls) > 10000
+    if is_large_dataset:
+        # If already processing, don't start another job
+        if background_process_state['is_processing']:
+            flash('Another batch of URLs is currently being processed. Please wait for it to complete.', 'warning')
+            return redirect(url_for('processing'))
+        
+        # For large datasets, redirect to the processing page immediately
+        # The actual processing will happen while the user watches the progress
+        logger.info(f"Starting to process {len(urls)} URLs in batches of {batch_size}")
+        flash(f'Processing {len(urls)} URLs. This may take some time for large datasets.', 'info')
+        
+        # Start processing in a background thread
+        def process_urls_background():
+            with app.app_context():
+                try:
+                    process_url_dataset(urls, batch_size)
+                except Exception as e:
+                    logger.error(f"Background processing error: {str(e)}")
+                
+        # Import threading only when needed
+        import threading
+        processing_thread = threading.Thread(target=process_urls_background)
+        processing_thread.daemon = True
+        processing_thread.start()
+        
+        return redirect(url_for('processing'))
+    
+    logger.info(f"Starting to process {len(urls)} URLs in batches of {batch_size}")
+    flash(f'Processing {len(urls)} URLs. This may take some time for large datasets.', 'info')
+    
+    try:
+        # Store URLs in database if they don't exist (in batches)
+        new_urls = []
+        
+        for i in range(0, len(urls), batch_size):
+            batch = urls[i:i+batch_size]
+            
+            # Process this batch
+            for url_str in batch:
+                url = URL.query.filter_by(url=url_str).first()
+                if not url:
+                    url = URL(url=url_str)
+                    db.session.add(url)
+                    new_urls.append(url)
+            
+            # Commit this batch to avoid large transactions
+            if new_urls:
+                db.session.commit()
+                logger.debug(f"Added batch of {len(new_urls)} new URLs to the database")
+                new_urls = []
+        
+        # Process URLs in batches to handle large numbers efficiently
+        all_results = {}
+        
+        for i in range(0, len(urls), batch_size):
+            batch = urls[i:i+batch_size]
+            batch_results = indexing_checker.check_urls(batch)
+            all_results.update(batch_results)
+            
+            # Save this batch of results to database
+            for url_str, is_indexed in batch_results.items():
+                url = URL.query.filter_by(url=url_str).first()
+                if url:
+                    result = CheckResult(
+                        url_id=url.id,
+                        is_indexed=is_indexed,
+                        checked_at=datetime.utcnow()
+                    )
+                    db.session.add(result)
+            
+            # Commit after each batch
+            db.session.commit()
+            logger.debug(f"Saved batch of check results ({i+1}-{min(i+batch_size, len(urls))} of {len(urls)})")
         
         # Create a report
         report = Report(

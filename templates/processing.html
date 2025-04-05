@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-hourglass-half"></i> Processing URLs
+                </h4>
+            </div>
+            <div class="card-body text-center">
+                <div class="mb-4">
+                    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                
+                <h5 class="mb-3">Processing {{ total_urls }} URLs</h5>
+                
+                <div class="progress mb-3" style="height: 25px;">
+                    {% set progress_percent = (processed_urls / total_urls * 100)|round|int if total_urls > 0 else 0 %}
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" 
+                         style="width: {{ progress_percent }}%;">
+                        {{ progress_percent }}%
+                    </div>
+                </div>
+                
+                <p class="text-muted mb-4">
+                    <strong>{{ processed_urls }}</strong> of <strong>{{ total_urls }}</strong> URLs processed
+                </p>
+                
+                <div class="alert alert-info">
+                    <p><i class="fas fa-info-circle"></i> Processing large datasets might take several minutes.</p>
+                    <p class="mb-0">This page will automatically refresh to show progress.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Auto-refresh the page every 3 seconds to update progress
+    setTimeout(function() {
+        window.location.reload();
+    }, 3000);
+</script>
+{% endblock %}

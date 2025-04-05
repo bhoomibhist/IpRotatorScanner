@@ -23,14 +23,30 @@
                     In production, our system rotates IP addresses to avoid Google's rate limiting.
                 </p>
                 
-                <form action="{{ url_for('check_urls') }}" method="POST">
+                <form action="{{ url_for('check_urls') }}" method="POST" enctype="multipart/form-data">
                     <div class="mb-3">
-                        <label for="urls" class="form-label">URLs to check:</label>
+                        <label for="urls" class="form-label">Enter URLs to check:</label>
                         <textarea class="form-control" id="urls" name="urls" rows="10" placeholder="https://example.com
 https://github.com
 https://wikipedia.org
-https://wordpress.com" required></textarea>
-                        <small class="form-text text-muted">Enter up to 1,000,000 URLs at once (one URL per line).</small>
+https://wordpress.com"></textarea>
+                        <small class="form-text text-muted">Enter URLs directly (one per line) or upload a file below.</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="url_file" class="form-label">Or upload a file with URLs:</label>
+                        <input class="form-control" type="file" id="url_file" name="url_file" accept=".txt,.csv">
+                        <small class="form-text text-muted">For large datasets (up to 1,000,000 URLs), upload a text file with one URL per line.</small>
+                    </div>
+                    
+                    <div class="alert alert-light border mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="batch_process" name="batch_process" value="true" checked>
+                            <label class="form-check-label" for="batch_process">
+                                Process in batches (recommended for large datasets)
+                            </label>
+                        </div>
+                        <small class="text-muted">This option processes URLs in smaller batches for better performance with large datasets.</small>
                     </div>
                     
                     <div class="d-grid">
