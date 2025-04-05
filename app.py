@@ -60,6 +60,77 @@ background_process_state = {
     'is_processing': False
 }
 
+# Utility function to sanitize URLs
+def sanitize_url(url_str):
+    """
+    Sanitize a URL string to prevent encoding issues.
+    
+    Args:
+        url_str: The URL string to sanitize
+        
+    Returns:
+        Sanitized URL string or None if the URL has encoding issues
+    """
+    try:
+        # Skip empty URLs
+        if not url_str or not url_str.strip():
+            return None
+            
+        # Basic sanitization
+        sanitized_url = url_str.strip()
+        
+        # Test that URL can be properly encoded/decoded
+        sanitized_url.encode('utf-8').decode('utf-8')
+        
+        return sanitized_url
+    except (UnicodeError, UnicodeDecodeError, UnicodeEncodeError) as e:
+        # Log URLs with encoding issues
+        logger.warning(f"URL encoding issue: {repr(url_str)[:100]}... Error: {str(e)}")
+        return None
+
+# Utility function to store URLs in database with sanitization
+def store_urls_in_database(urls, batch_size=1000):
+    """
+    Store URLs in the database after sanitization.
+    Skip any URLs with encoding issues.
+    
+    Args:
+        urls: List of URLs to store
+        batch_size: Number of URLs to process in each batch
+        
+    Returns:
+        List of successfully stored URL objects
+    """
+    stored_urls = []
+    new_urls = []
+    
+    for i in range(0, len(urls), batch_size):
+        batch = urls[i:i+batch_size]
+        
+        # Process this batch with proper URL sanitization
+        for url_str in batch:
+            # Apply sanitization to handle encoding issues
+            sanitized_url = sanitize_url(url_str)
+            if not sanitized_url:
+                continue  # Skip invalid URLs
+                
+            # Check if URL already exists
+            url = URL.query.filter_by(url=sanitized_url).first()
+            if not url:
+                url = URL(url=sanitized_url)
+                db.session.add(url)
+                new_urls.append(url)
+            
+            stored_urls.append(url)
+        
+        # Commit this batch to avoid large transactions
+        if new_urls:
+            db.session.commit()
+            logger.debug(f"Added batch of {len(new_urls)} new URLs to the database")
+            new_urls = []
+    
+    return stored_urls
+
 # Function to process URLs in a background thread
 def process_url_dataset(urls, batch_size):
     """
@@ -80,30 +151,13 @@ def process_url_dataset(urls, batch_size):
         
         logger.info(f"Background processing started for {len(urls)} URLs")
         
-        # Store URLs in database if they don't exist (in batches)
-        new_urls = []
+        # Store URLs in database with sanitization
+        stored_urls = store_urls_in_database(urls, batch_size)
         
-        for i in range(0, len(urls), batch_size):
-            batch = urls[i:i+batch_size]
-            
-            # Process this batch
-            for url_str in batch:
-                url = URL.query.filter_by(url=url_str).first()
-                if not url:
-                    url = URL(url=url_str)
-                    db.session.add(url)
-                    new_urls.append(url)
-            
-            # Commit this batch to avoid large transactions
-            if new_urls:
-                db.session.commit()
-                logger.debug(f"Added batch of {len(new_urls)} new URLs to the database")
-                new_urls = []
-            
-            # Update progress after storing URLs
-            processed = min(i + batch_size, len(urls)) // 2  # 50% progress for storage phase
-            background_process_state['processed_urls'] = processed
-            logger.debug(f"Storage phase progress: {processed}/{len(urls)} URLs processed ({(processed/len(urls)*100):.1f}%)")
+        # Update progress to 50% after storage phase
+        processed = len(urls) // 2
+        background_process_state['processed_urls'] = processed
+        logger.debug(f"Storage phase completed: {len(stored_urls)} valid URLs stored in database")
         
         # Process URLs in batches to handle large numbers efficiently
         all_results = {}
@@ -307,25 +361,9 @@ def check_urls():
     flash(f'Processing {len(urls)} URLs. This may take some time for large datasets.', 'info')
     
     try:
-        # Store URLs in database if they don't exist (in batches)
-        new_urls = []
-        
-        for i in range(0, len(urls), batch_size):
-            batch = urls[i:i+batch_size]
-            
-            # Process this batch
-            for url_str in batch:
-                url = URL.query.filter_by(url=url_str).first()
-                if not url:
-                    url = URL(url=url_str)
-                    db.session.add(url)
-                    new_urls.append(url)
-            
-            # Commit this batch to avoid large transactions
-            if new_urls:
-                db.session.commit()
-                logger.debug(f"Added batch of {len(new_urls)} new URLs to the database")
-                new_urls = []
+        # Use our utility function to store URLs with sanitization
+        stored_urls = store_urls_in_database(urls, batch_size)
+        logger.debug(f"Added {len(stored_urls)} sanitized URLs to the database")
         
         # Process URLs in batches to handle large numbers efficiently
         all_results = {}
