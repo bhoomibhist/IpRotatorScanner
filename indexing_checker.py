@@ -143,8 +143,12 @@ class IndexingChecker:
             Dictionary mapping URLs to their indexing status
         """
         results = {}
+        total_urls = len(urls)
         
-        for url in urls:
+        # Use a smaller delay for very large batches
+        check_delay = 0.1 if total_urls > 1000 else 0.5
+        
+        for i, url in enumerate(urls):
             try:
                 # Add scheme if missing
                 if not url.startswith('http'):
@@ -153,12 +157,19 @@ class IndexingChecker:
                 is_indexed = self.is_url_indexed(url)
                 results[url] = is_indexed
                 
-                logger.info(f"URL {url} is {'indexed' if is_indexed else 'not indexed'}")
+                # Log less frequently for large batches
+                if total_urls <= 100 or i % 100 == 0:
+                    logger.info(f"URL {i+1}/{total_urls}: {url} is {'indexed' if is_indexed else 'not indexed'}")
                 
-                # Small delay between checks
-                time.sleep(0.5)  # Reduced to make demo faster
+                # Small delay between checks - reduce for large batches
+                if not self.demo_mode or i % 10 == 0:  # In demo mode, only delay occasionally
+                    time.sleep(check_delay)
             except Exception as e:
                 logger.error(f"Error checking URL {url}: {str(e)}")
                 results[url] = False
+        
+        # Summary log
+        indexed_count = sum(1 for is_indexed in results.values() if is_indexed)
+        logger.info(f"Completed batch of {total_urls} URLs: {indexed_count} indexed, {total_urls - indexed_count} not indexed")
         
         return results
